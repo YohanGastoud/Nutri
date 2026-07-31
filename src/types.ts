@@ -5,6 +5,11 @@ export type Nutrients = {
   fiber: number // g
 }
 
+export type Category = {
+  id: string
+  name: string
+}
+
 export type Ingredient = {
   id: string
   name: string
@@ -12,6 +17,7 @@ export type Ingredient = {
   per100g: Nutrients
   /** Poids d’une portion habituelle en grammes */
   portionGrams: number
+  categoryId: string
 }
 
 export type Entry = {
@@ -22,6 +28,7 @@ export type Entry = {
 }
 
 export type AppData = {
+  categories: Category[]
   ingredients: Ingredient[]
   entries: Entry[]
   goals: Nutrients

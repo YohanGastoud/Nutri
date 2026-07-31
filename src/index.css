@@ -493,14 +493,133 @@ button {
 
 .list li {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.5rem 1rem;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.5rem 0.75rem;
   align-items: center;
   padding: 0.85rem 0.95rem;
   border-radius: 12px;
   background: #fff;
   border: 1px solid var(--line);
   animation: fade-up 0.3s ease both;
+  transition: border-color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+.list li:not(:has(.drag-handle)) {
+  grid-template-columns: 1fr auto;
+}
+
+.drag-handle {
+  color: var(--muted);
+  font-size: 0.95rem;
+  letter-spacing: -0.12em;
+  cursor: grab;
+  user-select: none;
+  padding: 0.2rem 0.15rem;
+  line-height: 1;
+}
+
+.list li.dragging {
+  opacity: 0.45;
+}
+
+.list li.drag-over {
+  border-color: var(--accent-soft);
+  background: var(--accent-wash);
+}
+
+.catalog-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.catalog-group {
+  padding: 0.85rem;
+  border-radius: 12px;
+  border: 1px dashed transparent;
+  background: rgba(255, 255, 255, 0.35);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.catalog-group.drop-target {
+  border-color: var(--accent-soft);
+  background: var(--accent-wash);
+}
+
+.catalog-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.catalog-group-head h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.catalog-group .list {
+  margin-top: 0.55rem;
+}
+
+.drop-hint {
+  margin-top: 0.55rem;
+  padding: 0.9rem;
+  font-size: 0.9rem;
+}
+
+.category-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: end;
+  margin-bottom: 0.85rem;
+}
+
+.category-form .name-field {
+  flex: 1 1 12rem;
+}
+
+.category-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.category-chips li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.7rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.category-chips li > span {
+  flex: 1 1 auto;
+  font-weight: 600;
+}
+
+.rename-input {
+  flex: 1 1 10rem;
+  border: 1px solid var(--accent-soft);
+  border-radius: 8px;
+  padding: 0.4rem 0.55rem;
+  background: #fff;
+}
+
+.rename-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(45, 122, 82, 0.18);
 }
 
 .item-main {

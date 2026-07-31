@@ -6,14 +6,15 @@ import {
   formatDateLabel,
   loadData,
   progressPct,
+  rebuildIngredients,
   round0,
   round1,
   saveData,
-  scaleNutrients,
   sumNutrients,
   todayISO,
   uid,
 } from './storage'
+import Catalog from './Catalog'
 import './index.css'
 
 type Tab = 'journal' | 'ingredients'
@@ -148,6 +149,7 @@ export default function App() {
   const [editId, setEditId] = useState<string | null>(null)
   const [formName, setFormName] = useState('')
   const [formPortion, setFormPortion] = useState('100')
+  const [formCategoryId, setFormCategoryId] = useState('')
   const [formNutrients, setFormNutrients] = useState({
     calories: '',
     protein: '',
@@ -164,6 +166,12 @@ export default function App() {
       setIngredientId(data.ingredients[0].id)
     }
   }, [data.ingredients, ingredientId])
+
+  useEffect(() => {
+    if (!formCategoryId && data.categories.length > 0) {
+      setFormCategoryId(data.categories[0].id)
+    }
+  }, [data.categories, formCategoryId])
 
   const selectedIngredient = useMemo(
     () => data.ingredients.find((i) => i.id === ingredientId) ?? null,
@@ -190,18 +198,16 @@ export default function App() {
     return sumNutrients(nutrients)
   }, [dayEntries, data.ingredients])
 
-  const sortedIngredients = useMemo(
-    () =>
-      [...data.ingredients].sort((a, b) =>
-        a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }),
-      ),
-    [data.ingredients],
+  const orderedIngredients = useMemo(
+    () => rebuildIngredients(data.categories, data.ingredients),
+    [data.categories, data.ingredients],
   )
 
   function resetIngredientForm() {
     setEditId(null)
     setFormName('')
     setFormPortion('100')
+    setFormCategoryId(data.categories[0]?.id ?? '')
     setFormNutrients({
       calories: '',
       protein: '',
@@ -214,6 +220,7 @@ export default function App() {
     setEditId(ing.id)
     setFormName(ing.name)
     setFormPortion(String(ing.portionGrams))
+    setFormCategoryId(ing.categoryId)
     setFormNutrients({
       calories: String(ing.per100g.calories),
       protein: String(ing.per100g.protein),
@@ -282,22 +289,29 @@ export default function App() {
       Number(formPortion.replace(',', '.')) > 0
         ? Number(formPortion.replace(',', '.'))
         : 100
+    const categoryId =
+      formCategoryId || data.categories[0]?.id || 'cat-general'
 
     if (editId) {
       setData((prev) => ({
         ...prev,
-        ingredients: prev.ingredients.map((ing) =>
-          ing.id === editId ? { ...ing, name, per100g, portionGrams } : ing,
+        ingredients: rebuildIngredients(
+          prev.categories,
+          prev.ingredients.map((ing) =>
+            ing.id === editId
+              ? { ...ing, name, per100g, portionGrams, categoryId }
+              : ing,
+          ),
         ),
       }))
     } else {
       const newId = uid()
       setData((prev) => ({
         ...prev,
-        ingredients: [
+        ingredients: rebuildIngredients(prev.categories, [
           ...prev.ingredients,
-          { id: newId, name, per100g, portionGrams },
-        ],
+          { id: newId, name, per100g, portionGrams, categoryId },
+        ]),
       }))
       setIngredientId(newId)
     }
@@ -417,7 +431,7 @@ export default function App() {
             <p className="hint">
               Choisis un ingrédient, puis ajuste en portions ou en grammes.
             </p>
-            {sortedIngredients.length === 0 ? (
+            {orderedIngredients.length === 0 ? (
               <p className="empty">
                 Aucun ingrédient pour l’instant.{' '}
                 <button
@@ -437,11 +451,21 @@ export default function App() {
                     value={ingredientId}
                     onChange={(e) => setIngredientId(e.target.value)}
                   >
-                    {sortedIngredients.map((ing) => (
-                      <option key={ing.id} value={ing.id}>
-                        {ing.name} ({round0(ing.portionGrams)} g / portion)
-                      </option>
-                    ))}
+                    {data.categories.map((cat) => {
+                      const items = orderedIngredients.filter(
+                        (i) => i.categoryId === cat.id,
+                      )
+                      if (items.length === 0) return null
+                      return (
+                        <optgroup key={cat.id} label={cat.name}>
+                          {items.map((ing) => (
+                            <option key={ing.id} value={ing.id}>
+                              {ing.name} ({round0(ing.portionGrams)} g / portion)
+                            </option>
+                          ))}
+                        </optgroup>
+                      )
+                    })}
                   </select>
                 </div>
                 <div className="field">
@@ -542,6 +566,21 @@ export default function App() {
                 />
               </div>
               <div className="field">
+                <label htmlFor="category">Catégorie</label>
+                <select
+                  id="category"
+                  value={formCategoryId}
+                  onChange={(e) => setFormCategoryId(e.target.value)}
+                  required
+                >
+                  {data.categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
                 <label htmlFor="portion">Portion habituelle (g)</label>
                 <input
                   id="portion"
@@ -596,59 +635,16 @@ export default function App() {
             </form>
           </section>
 
-          <section className="panel">
-            <div className="section-head">
-              <h2>Catalogue</h2>
-              <span className="badge">
-                {sortedIngredients.length} ingrédient
-                {sortedIngredients.length === 1 ? '' : 's'}
-              </span>
-            </div>
-            {sortedIngredients.length === 0 ? (
-              <p className="empty">Ton catalogue est vide.</p>
-            ) : (
-              <ul className="list">
-                {sortedIngredients.map((ing) => {
-                  const preview = scaleNutrients(ing.per100g, 100)
-                  return (
-                    <li
-                      key={ing.id}
-                      className={editId === ing.id ? 'editing' : undefined}
-                    >
-                      <div className="item-main">
-                        <p className="item-title">{ing.name}</p>
-                        <p className="item-meta">
-                          portion {round0(ing.portionGrams)} g · pour 100 g ·{' '}
-                          {round0(preview.calories)} kcal
-                        </p>
-                        <div className="macros">
-                          <span>P {round1(preview.protein)} g</span>
-                          <span>G {round1(preview.carbs)} g</span>
-                          <span>F {round1(preview.fiber)} g</span>
-                        </div>
-                      </div>
-                      <div className="item-actions">
-                        <button
-                          type="button"
-                          className="btn-ghost"
-                          onClick={() => startEdit(ing)}
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-danger"
-                          onClick={() => removeIngredient(ing.id)}
-                        >
-                          Supprimer
-                        </button>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </section>
+          <Catalog
+            categories={data.categories}
+            ingredients={data.ingredients}
+            editId={editId}
+            onChange={({ categories, ingredients }) =>
+              setData((prev) => ({ ...prev, categories, ingredients }))
+            }
+            onEdit={startEdit}
+            onRemove={removeIngredient}
+          />
         </>
       )}
     </div>
