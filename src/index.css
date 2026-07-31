@@ -713,3 +713,145 @@ button {
   outline: 2px solid var(--accent-soft);
   outline-offset: 1px;
 }
+
+.recipe-quick {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.recipe-quick-label {
+  margin: 0 0 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.recipe-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.recipe-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  border: 1px solid var(--line);
+  background: linear-gradient(160deg, #e4f0e6, #d0e5d4);
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+  transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.recipe-chip:hover {
+  border-color: var(--accent-soft);
+  transform: translateY(-1px);
+}
+
+.recipe-chip-name {
+  font-weight: 650;
+  color: var(--accent);
+}
+
+.recipe-chip-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.day-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.day-blocks .list {
+  margin-top: 0;
+}
+
+.recipe-block {
+  border: 1px solid #a8c9ae;
+  border-radius: 12px;
+  background: linear-gradient(160deg, #eaf4eb, #dff0e2);
+  padding: 0.85rem;
+}
+
+.recipe-block-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.recipe-block-items {
+  margin-top: 0;
+}
+
+.recipe-block-items li {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.recipe-form .name-field {
+  margin-bottom: 0.85rem;
+}
+
+.recipe-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+}
+
+.recipe-item-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: end;
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.recipe-item-row .field {
+  flex: 1 1 5.5rem;
+}
+
+.recipe-item-row .field-wide {
+  flex: 2.2 1 11rem;
+}
+
+.recipe-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.recipe-form-actions .actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.recipe-list li {
+  grid-template-columns: 1fr auto;
+  align-items: start;
+}
+
+.recipe-breakdown {
+  list-style: none;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}

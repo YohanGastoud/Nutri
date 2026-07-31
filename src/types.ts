@@ -20,16 +20,32 @@ export type Ingredient = {
   categoryId: string
 }
 
+export type RecipeItem = {
+  ingredientId: string
+  quantityGrams: number
+}
+
+export type Recipe = {
+  id: string
+  name: string
+  items: RecipeItem[]
+}
+
 export type Entry = {
   id: string
   date: string // YYYY-MM-DD
   ingredientId: string
   quantityGrams: number
+  /** Recette d’origine, si ajoutée via une recette */
+  recipeId?: string
+  /** Instance du jour (pour grouper / retirer le combo) */
+  recipeInstanceId?: string
 }
 
 export type AppData = {
   categories: Category[]
   ingredients: Ingredient[]
+  recipes: Recipe[]
   entries: Entry[]
   goals: Nutrients
 }

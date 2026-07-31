@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import type { AppData, Ingredient, Nutrients } from './types'
+import type { AppData, Ingredient, Nutrients, Recipe } from './types'
 import {
   entryNutrients,
   formatDateLabel,
+  groupDayEntries,
   loadData,
   progressPct,
   rebuildIngredients,
+  recipeNutrients,
   round0,
   round1,
   saveData,
@@ -15,9 +17,10 @@ import {
   uid,
 } from './storage'
 import Catalog from './Catalog'
+import Recipes from './Recipes'
 import './index.css'
 
-type Tab = 'journal' | 'ingredients'
+type Tab = 'journal' | 'ingredients' | 'recipes'
 type NutrientKey = keyof Nutrients
 
 const EMPTY_NUTRIENTS: Nutrients = {
@@ -203,6 +206,11 @@ export default function App() {
     [data.categories, data.ingredients],
   )
 
+  const dayBlocks = useMemo(
+    () => groupDayEntries(dayEntries, data.recipes),
+    [dayEntries, data.recipes],
+  )
+
   function resetIngredientForm() {
     setEditId(null)
     setFormName('')
@@ -274,6 +282,34 @@ export default function App() {
     }))
   }
 
+  function removeRecipeInstance(instanceId: string) {
+    setData((prev) => ({
+      ...prev,
+      entries: prev.entries.filter((e) => e.recipeInstanceId !== instanceId),
+    }))
+  }
+
+  function addRecipeToDay(recipe: Recipe) {
+    const instanceId = uid()
+    const newEntries = recipe.items
+      .filter((item) =>
+        data.ingredients.some((i) => i.id === item.ingredientId),
+      )
+      .map((item) => ({
+        id: uid(),
+        date,
+        ingredientId: item.ingredientId,
+        quantityGrams: item.quantityGrams,
+        recipeId: recipe.id,
+        recipeInstanceId: instanceId,
+      }))
+    if (newEntries.length === 0) return
+    setData((prev) => ({
+      ...prev,
+      entries: [...prev.entries, ...newEntries],
+    }))
+  }
+
   function handleSaveIngredient(e: FormEvent) {
     e.preventDefault()
     const name = formName.trim()
@@ -332,6 +368,12 @@ export default function App() {
       ...prev,
       ingredients: prev.ingredients.filter((i) => i.id !== id),
       entries: prev.entries.filter((e) => e.ingredientId !== id),
+      recipes: prev.recipes
+        .map((r) => ({
+          ...r,
+          items: r.items.filter((it) => it.ingredientId !== id),
+        }))
+        .filter((r) => r.items.length > 0),
     }))
     if (ingredientId === id) setIngredientId('')
     if (editId === id) resetIngredientForm()
@@ -403,6 +445,13 @@ export default function App() {
         >
           Ingrédients
         </button>
+        <button
+          type="button"
+          className={tab === 'recipes' ? 'active' : ''}
+          onClick={() => setTab('recipes')}
+        >
+          Recettes
+        </button>
       </nav>
 
       {tab === 'journal' && (
@@ -429,8 +478,34 @@ export default function App() {
           <section className="panel">
             <h2>Ajouter</h2>
             <p className="hint">
-              Choisis un ingrédient, puis ajuste en portions ou en grammes.
+              Ingrédient à la carte, ou une recette d’un coup.
             </p>
+
+            {data.recipes.length > 0 && (
+              <div className="recipe-quick">
+                <p className="recipe-quick-label">Recettes rapides</p>
+                <div className="recipe-chips">
+                  {data.recipes.map((recipe) => {
+                    const totals = recipeNutrients(recipe, data.ingredients)
+                    return (
+                      <button
+                        key={recipe.id}
+                        type="button"
+                        className="recipe-chip"
+                        onClick={() => addRecipeToDay(recipe)}
+                      >
+                        <span className="recipe-chip-name">{recipe.name}</span>
+                        <span className="recipe-chip-meta">
+                          {round0(totals.calories)} kcal · {recipe.items.length}{' '}
+                          ingr.
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {orderedIngredients.length === 0 ? (
               <p className="empty">
                 Aucun ingrédient pour l’instant.{' '}
@@ -500,51 +575,126 @@ export default function App() {
             {dayEntries.length === 0 ? (
               <p className="empty">Rien encore aujourd’hui. Ajoute ton premier aliment.</p>
             ) : (
-              <ul className="list">
-                {dayEntries.map((entry) => {
-                  const ing = data.ingredients.find(
-                    (i) => i.id === entry.ingredientId,
+              <div className="day-blocks">
+                {dayBlocks.map((block) => {
+                  if (block.type === 'single') {
+                    const entry = block.entry
+                    const ing = data.ingredients.find(
+                      (i) => i.id === entry.ingredientId,
+                    )
+                    const n =
+                      entryNutrients(entry, data.ingredients) ?? EMPTY_NUTRIENTS
+                    return (
+                      <ul className="list" key={entry.id}>
+                        <li>
+                          <div className="item-main">
+                            <p className="item-title">
+                              {ing?.name ?? 'Ingrédient supprimé'}
+                            </p>
+                            <p className="item-meta">
+                              {ing && ing.portionGrams > 0
+                                ? (() => {
+                                    const p =
+                                      entry.quantityGrams / ing.portionGrams
+                                    return `${round1(p)} portion${
+                                      Math.abs(p - 1) < 0.05 ? '' : 's'
+                                    } · `
+                                  })()
+                                : ''}
+                              {round0(entry.quantityGrams)} g ·{' '}
+                              {round0(n.calories)} kcal
+                            </p>
+                            <div className="macros">
+                              <span>P {round1(n.protein)} g</span>
+                              <span>G {round1(n.carbs)} g</span>
+                              <span>F {round1(n.fiber)} g</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn-danger"
+                            onClick={() => removeEntry(entry.id)}
+                          >
+                            Retirer
+                          </button>
+                        </li>
+                      </ul>
+                    )
+                  }
+
+                  const totals = sumNutrients(
+                    block.entries
+                      .map((e) => entryNutrients(e, data.ingredients))
+                      .filter((n): n is Nutrients => n !== null),
                   )
-                  const n =
-                    entryNutrients(entry, data.ingredients) ?? EMPTY_NUTRIENTS
                   return (
-                    <li key={entry.id}>
-                      <div className="item-main">
-                        <p className="item-title">
-                          {ing?.name ?? 'Ingrédient supprimé'}
-                        </p>
-                        <p className="item-meta">
-                          {ing && ing.portionGrams > 0
-                            ? (() => {
-                                const p = entry.quantityGrams / ing.portionGrams
-                                return `${round1(p)} portion${
-                                  Math.abs(p - 1) < 0.05 ? '' : 's'
-                                } · `
-                              })()
-                            : ''}
-                          {round0(entry.quantityGrams)} g · {round0(n.calories)}{' '}
-                          kcal
-                        </p>
-                        <div className="macros">
-                          <span>P {round1(n.protein)} g</span>
-                          <span>G {round1(n.carbs)} g</span>
-                          <span>F {round1(n.fiber)} g</span>
+                    <div className="recipe-block" key={block.instanceId}>
+                      <div className="recipe-block-head">
+                        <div>
+                          <p className="item-title">{block.name}</p>
+                          <p className="item-meta">
+                            Recette · {round0(totals.calories)} kcal
+                          </p>
+                          <div className="macros">
+                            <span>P {round1(totals.protein)} g</span>
+                            <span>G {round1(totals.carbs)} g</span>
+                            <span>F {round1(totals.fiber)} g</span>
+                          </div>
                         </div>
+                        <button
+                          type="button"
+                          className="btn-danger"
+                          onClick={() => removeRecipeInstance(block.instanceId)}
+                        >
+                          Retirer
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        className="btn-danger"
-                        onClick={() => removeEntry(entry.id)}
-                      >
-                        Retirer
-                      </button>
-                    </li>
+                      <ul className="list recipe-block-items">
+                        {block.entries.map((entry) => {
+                          const ing = data.ingredients.find(
+                            (i) => i.id === entry.ingredientId,
+                          )
+                          const n =
+                            entryNutrients(entry, data.ingredients) ??
+                            EMPTY_NUTRIENTS
+                          return (
+                            <li key={entry.id}>
+                              <div className="item-main">
+                                <p className="item-title">
+                                  {ing?.name ?? 'Ingrédient supprimé'}
+                                </p>
+                                <p className="item-meta">
+                                  {round0(entry.quantityGrams)} g ·{' '}
+                                  {round0(n.calories)} kcal
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                className="btn-danger"
+                                onClick={() => removeEntry(entry.id)}
+                              >
+                                Retirer
+                              </button>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
                   )
                 })}
-              </ul>
+              </div>
             )}
           </section>
         </>
+      )}
+
+      {tab === 'recipes' && (
+        <Recipes
+          categories={data.categories}
+          ingredients={data.ingredients}
+          recipes={data.recipes}
+          onChange={(recipes) => setData((prev) => ({ ...prev, recipes }))}
+        />
       )}
 
       {tab === 'ingredients' && (
