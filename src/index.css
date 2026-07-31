@@ -855,3 +855,43 @@ button {
   font-size: 0.85rem;
   color: var(--ink-soft);
 }
+
+.day-entry {
+  align-items: start;
+}
+
+.entry-qty {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.entry-qty-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.entry-qty-field span {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.entry-qty-field input {
+  width: 5.5rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+}
+
+.entry-qty-field input:focus {
+  outline: none;
+  border-color: var(--accent-soft);
+  box-shadow: 0 0 0 3px rgba(45, 122, 82, 0.18);
+}

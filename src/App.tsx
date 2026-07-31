@@ -53,6 +53,69 @@ function shiftDate(iso: string, delta: number): string {
   return `${yy}-${mm}-${dd}`
 }
 
+function EntryQuantityEditor({
+  quantityGrams,
+  portionSize,
+  onChange,
+}: {
+  quantityGrams: number
+  portionSize: number
+  onChange: (grams: number) => void
+}) {
+  const size = portionSize > 0 ? portionSize : 100
+  const [portions, setPortions] = useState(() =>
+    String(Math.round((quantityGrams / size) * 100) / 100),
+  )
+  const [grams, setGrams] = useState(() => String(quantityGrams))
+
+  useEffect(() => {
+    setGrams(String(quantityGrams))
+    setPortions(String(Math.round((quantityGrams / size) * 100) / 100))
+  }, [quantityGrams, size])
+
+  function fromPortions(value: string) {
+    setPortions(value)
+    const p = Number(value.replace(',', '.'))
+    if (!Number.isFinite(p) || p <= 0) return
+    const g = Math.round(p * size * 10) / 10
+    setGrams(String(g))
+    onChange(g)
+  }
+
+  function fromGrams(value: string) {
+    setGrams(value)
+    const g = Number(value.replace(',', '.'))
+    if (!Number.isFinite(g) || g <= 0) return
+    setPortions(String(Math.round((g / size) * 100) / 100))
+    onChange(g)
+  }
+
+  return (
+    <div className="entry-qty">
+      <label className="entry-qty-field">
+        <span>Portions</span>
+        <input
+          type="number"
+          min="0"
+          step="any"
+          value={portions}
+          onChange={(e) => fromPortions(e.target.value)}
+        />
+      </label>
+      <label className="entry-qty-field">
+        <span>Grammes</span>
+        <input
+          type="number"
+          min="0"
+          step="any"
+          value={grams}
+          onChange={(e) => fromGrams(e.target.value)}
+        />
+      </label>
+    </div>
+  )
+}
+
 function GoalsProgress({
   totals,
   goals,
@@ -279,6 +342,16 @@ export default function App() {
     setData((prev) => ({
       ...prev,
       entries: prev.entries.filter((e) => e.id !== id),
+    }))
+  }
+
+  function updateEntryQuantity(id: string, quantityGrams: number) {
+    if (!Number.isFinite(quantityGrams) || quantityGrams <= 0) return
+    setData((prev) => ({
+      ...prev,
+      entries: prev.entries.map((e) =>
+        e.id === id ? { ...e, quantityGrams } : e,
+      ),
     }))
   }
 
@@ -586,24 +659,21 @@ export default function App() {
                       entryNutrients(entry, data.ingredients) ?? EMPTY_NUTRIENTS
                     return (
                       <ul className="list" key={entry.id}>
-                        <li>
+                        <li className="day-entry">
                           <div className="item-main">
                             <p className="item-title">
                               {ing?.name ?? 'Ingrédient supprimé'}
                             </p>
                             <p className="item-meta">
-                              {ing && ing.portionGrams > 0
-                                ? (() => {
-                                    const p =
-                                      entry.quantityGrams / ing.portionGrams
-                                    return `${round1(p)} portion${
-                                      Math.abs(p - 1) < 0.05 ? '' : 's'
-                                    } · `
-                                  })()
-                                : ''}
-                              {round0(entry.quantityGrams)} g ·{' '}
                               {round0(n.calories)} kcal
                             </p>
+                            <EntryQuantityEditor
+                              quantityGrams={entry.quantityGrams}
+                              portionSize={ing?.portionGrams ?? 100}
+                              onChange={(grams) =>
+                                updateEntryQuantity(entry.id, grams)
+                              }
+                            />
                             <div className="macros">
                               <span>P {round1(n.protein)} g</span>
                               <span>G {round1(n.carbs)} g</span>
@@ -658,15 +728,21 @@ export default function App() {
                             entryNutrients(entry, data.ingredients) ??
                             EMPTY_NUTRIENTS
                           return (
-                            <li key={entry.id}>
+                            <li key={entry.id} className="day-entry">
                               <div className="item-main">
                                 <p className="item-title">
                                   {ing?.name ?? 'Ingrédient supprimé'}
                                 </p>
                                 <p className="item-meta">
-                                  {round0(entry.quantityGrams)} g ·{' '}
                                   {round0(n.calories)} kcal
                                 </p>
+                                <EntryQuantityEditor
+                                  quantityGrams={entry.quantityGrams}
+                                  portionSize={ing?.portionGrams ?? 100}
+                                  onChange={(grams) =>
+                                    updateEntryQuantity(entry.id, grams)
+                                  }
+                                />
                               </div>
                               <button
                                 type="button"
