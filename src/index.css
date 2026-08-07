@@ -82,6 +82,64 @@ button {
   margin-bottom: 1.75rem;
 }
 
+.topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.85rem;
+}
+
+.auth-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.auth-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--line);
+}
+
+.auth-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.auth-name {
+  font-size: 0.9rem;
+  font-weight: 560;
+  line-height: 1.2;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auth-status {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.auth-btn {
+  white-space: nowrap;
+}
+
+.auth-error {
+  margin: -0.75rem 0 1.25rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
 .brand {
   display: flex;
   flex-direction: column;

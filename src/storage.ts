@@ -173,12 +173,12 @@ function normalizeRecipes(raw: unknown, ingredientIds: Set<string>): Recipe[] {
     .filter((r): r is Recipe => r !== null)
 }
 
-export function loadData(): AppData {
+export function parseAppData(raw: unknown): AppData | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return emptyData()
-    const parsed = JSON.parse(raw) as Partial<AppData>
-    if (!parsed.ingredients || !parsed.entries) return emptyData()
+    const parsed = raw as Partial<AppData>
+    if (!parsed || !Array.isArray(parsed.ingredients) || !Array.isArray(parsed.entries)) {
+      return null
+    }
 
     const categories = normalizeCategories(parsed.categories)
     const fallbackCategoryId = categories[0].id
@@ -203,9 +203,19 @@ export function loadData(): AppData {
       categories,
       ingredients,
       recipes: normalizeRecipes(parsed.recipes, ingredientIds),
-      entries: parsed.entries,
+      entries: parsed.entries as Entry[],
       goals: normalizeGoals(parsed.goals),
     }
+  } catch {
+    return null
+  }
+}
+
+export function loadData(): AppData {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return emptyData()
+    return parseAppData(JSON.parse(raw)) ?? emptyData()
   } catch {
     return emptyData()
   }
@@ -213,6 +223,15 @@ export function loadData(): AppData {
 
 export function saveData(data: AppData): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+}
+
+/** True if the user has real journal data (not just the demo seed). */
+export function hasUserProgress(data: AppData): boolean {
+  return (
+    data.entries.length > 0 ||
+    data.ingredients.some((i) => !i.id.startsWith('demo-')) ||
+    data.recipes.some((r) => !r.id.startsWith('demo-'))
+  )
 }
 
 export function todayISO(): string {

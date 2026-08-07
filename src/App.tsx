@@ -16,6 +16,8 @@ import {
   todayISO,
   uid,
 } from './storage'
+import { resolveCloudData, saveCloudData } from './cloud'
+import { useAuth } from './auth'
 import Catalog from './Catalog'
 import Recipes from './Recipes'
 import './index.css'
@@ -204,9 +206,15 @@ function GoalsProgress({
 }
 
 export default function App() {
+  const { user, loading: authLoading, configured, signInWithGoogle, signOut } =
+    useAuth()
   const [data, setData] = useState<AppData>(() => loadData())
   const [tab, setTab] = useState<Tab>('journal')
   const [date, setDate] = useState(todayISO)
+  const [cloudReady, setCloudReady] = useState(!configured)
+  const [cloudBusy, setCloudBusy] = useState(false)
+  const [authBusy, setAuthBusy] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
 
   const [ingredientId, setIngredientId] = useState('')
   const [quantity, setQuantity] = useState('100')
@@ -224,8 +232,73 @@ export default function App() {
   })
 
   useEffect(() => {
+    if (!configured || authLoading) return
+
+    if (!user) {
+      setCloudReady(true)
+      return
+    }
+
+    let cancelled = false
+    setCloudReady(false)
+    setAuthError(null)
+
+    ;(async () => {
+      try {
+        const resolved = await resolveCloudData(user.uid, loadData())
+        if (!cancelled) setData(resolved)
+      } catch {
+        if (!cancelled) {
+          setAuthError('Impossible de synchroniser tes données.')
+        }
+      } finally {
+        if (!cancelled) setCloudReady(true)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user, authLoading, configured])
+
+  useEffect(() => {
     saveData(data)
   }, [data])
+
+  useEffect(() => {
+    if (!user || !cloudReady) return
+    const timer = window.setTimeout(() => {
+      setCloudBusy(true)
+      saveCloudData(user.uid, data)
+        .catch(() => setAuthError('Échec de la sauvegarde cloud.'))
+        .finally(() => setCloudBusy(false))
+    }, 700)
+    return () => window.clearTimeout(timer)
+  }, [data, user, cloudReady])
+
+  async function handleSignIn() {
+    setAuthBusy(true)
+    setAuthError(null)
+    try {
+      await signInWithGoogle()
+    } catch {
+      setAuthError('Connexion Google annulée ou échouée.')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  async function handleSignOut() {
+    setAuthBusy(true)
+    setAuthError(null)
+    try {
+      await signOut()
+    } catch {
+      setAuthError('Déconnexion impossible.')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (!ingredientId && data.ingredients.length > 0) {
@@ -479,29 +552,80 @@ export default function App() {
           <h1>Nutri</h1>
           <p>Compte tes apports, jour après jour.</p>
         </div>
-        <div className="date-nav">
-          <button
-            type="button"
-            aria-label="Jour précédent"
-            onClick={() => setDate((d) => shiftDate(d, -1))}
-          >
-            ‹
-          </button>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            aria-label="Date"
-          />
-          <button
-            type="button"
-            aria-label="Jour suivant"
-            onClick={() => setDate((d) => shiftDate(d, 1))}
-          >
-            ›
-          </button>
+        <div className="topbar-actions">
+          <div className="date-nav">
+            <button
+              type="button"
+              aria-label="Jour précédent"
+              onClick={() => setDate((d) => shiftDate(d, -1))}
+            >
+              ‹
+            </button>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              aria-label="Date"
+            />
+            <button
+              type="button"
+              aria-label="Jour suivant"
+              onClick={() => setDate((d) => shiftDate(d, 1))}
+            >
+              ›
+            </button>
+          </div>
+          {configured && (
+            <div className="auth-bar">
+              {authLoading || (user && !cloudReady) ? (
+                <span className="auth-status">Synchronisation…</span>
+              ) : user ? (
+                <>
+                  {user.photoURL && (
+                    <img
+                      className="auth-avatar"
+                      src={user.photoURL}
+                      alt=""
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
+                  <div className="auth-meta">
+                    <span className="auth-name">
+                      {user.displayName ?? user.email}
+                    </span>
+                    <span className="auth-status">
+                      {cloudBusy ? 'Sauvegarde…' : 'Sauvegardé dans le cloud'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-ghost auth-btn"
+                    disabled={authBusy}
+                    onClick={handleSignOut}
+                  >
+                    Déconnexion
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-primary auth-btn"
+                  disabled={authBusy}
+                  onClick={handleSignIn}
+                >
+                  Connexion Google
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </header>
+
+      {authError && (
+        <p className="auth-error" role="alert">
+          {authError}
+        </p>
+      )}
 
       <nav className="tabs" aria-label="Sections">
         <button
